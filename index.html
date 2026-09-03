@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Local Anonymizer | County of Marin</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='10' fill='%23000'/%3E%3Cg fill='none' stroke='%23e5b53b' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='12' height='12' rx='2'/%3E%3Crect x='27' y='9' width='12' height='12' rx='2'/%3E%3Crect x='9' y='27' width='12' height='12' rx='2'/%3E%3Crect x='27' y='27' width='12' height='12' rx='2'/%3E%3C/g%3E%3C/svg%3E">
+    <meta name="description" content="Anonymize CSV, JSON, and Excel files locally in your browser.">
+    <link rel="stylesheet" href="vendor/pico.min.css">
+    <link rel="stylesheet" href="shared/app-brand.css">
+    <link rel="stylesheet" href="assets/app.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <div class="anonymizer-drop-overlay" aria-hidden="true">
+      <div class="anonymizer-drop-overlay__panel">
+        <span class="anonymizer-drop-overlay__icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48"><path d="M24 6v24"/><path d="m14 18 10-12 10 12"/><path d="M8 29v10a3 3 0 0 0 3 3h26a3 3 0 0 0 3-3V29"/></svg>
+        </span>
+        <p class="anonymizer-drop-overlay__title">Drop one data file to open it</p>
+        <p class="app-help-text">CSV, JSON, and XLSX files are processed locally in this browser.</p>
+      </div>
+    </div>
+
+    <div class="marinos-banner">
+      <div class="marinos-banner__inner">
+        <div class="menu marinos-menu">
+          <button type="button" class="menu-toggle marinos-menu__toggle" aria-expanded="false" aria-controls="marinos-menu-panel">
+            <span class="marinos-banner__icon" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="7" y="7" width="13" height="13" rx="2"/><rect x="28" y="7" width="13" height="13" rx="2"/><rect x="7" y="28" width="13" height="13" rx="2"/><rect x="28" y="28" width="13" height="13" rx="2"/></svg></span>
+            MarinOS<sup>ALPHA</sup>
+            <svg class="menu-toggle__caret" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>
+          </button>
+          <div id="marinos-menu-panel" class="menu-panel marinos-menu__panel" hidden>
+            <a href="https://marincountygov.github.io/marin-magic/"><span class="marinos-menu__icon" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="m24 5 2.8 9.2L36 17l-9.2 2.8L24 29l-2.8-9.2L12 17l9.2-2.8zM37 28l1.6 5.4L44 35l-5.4 1.6L37 42l-1.6-5.4L30 35l5.4-1.6zM11 28l1.2 3.8L16 33l-3.8 1.2L11 38l-1.2-3.8L6 33l3.8-1.2z"/></svg></span>MarinMagic</a>
+            <a href="https://marincountygov.github.io/marin-decision-maker/"><span class="marinos-menu__icon" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="11" cy="12" r="4"/><circle cx="37" cy="12" r="4"/><circle cx="24" cy="37" r="4"/><path d="M15 12h18M35 16 26 33M13 16l9 17"/></svg></span>Marin Decision Maker</a>
+            <a href="https://marincountygov.github.io/marin-docs/"><span class="marinos-menu__icon" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 6h17l8 8v28H13z"/><path d="M30 6v9h8M19 24h13M19 31h13"/></svg></span>MarinDocs</a>
+            <a class="marinos-menu__all" href="https://marincountygov.github.io/marin-os/">Browse all in MarinOS</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <header class="app-header" role="banner">
+      <div class="app-header__inner">
+        <div class="app-identity">
+          <div class="app-title-row">
+            <span class="app-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/><circle cx="12" cy="9" r="2.5"/><path d="M7.8 18.4c.8-3 2.2-4.4 4.2-4.4s3.4 1.4 4.2 4.4"/></svg>
+            </span>
+            <div class="app-title-copy">
+              <h1 class="app-title">Local Anonymizer</h1>
+              <p class="app-subtitle">Anonymize CSV, JSON, and Excel files locally in your browser.</p>
+            </div>
+          </div>
+        </div>
+        <div class="app-header__actions">
+          <button type="button" class="app-menu-toggle secondary" id="menu-toggle" aria-expanded="false" aria-controls="app-nav">Menu</button>
+          <nav class="app-nav" id="app-nav" aria-label="Application navigation">
+            <a href="#start" aria-current="page">Start</a>
+            <a href="#about">About</a>
+            <a href="#updates">Updates</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" class="container app-main" tabindex="-1">
+      <div id="app-status-message" class="app-alert app-alert--info" role="status" aria-live="polite" aria-atomic="true"></div>
+
+      <section id="start" data-tab-section="start" aria-labelledby="start-heading">
+        <div class="anonymizer-grid">
+          <div class="app-card">
+            <div id="dropzone" class="anonymizer-dropzone" data-active="false">
+              <span class="anonymizer-dropzone__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
+              </span>
+              <h2 id="start-heading">Drop a data file anywhere on this page</h2>
+              <p class="app-help-text">You can also choose one CSV, JSON, or XLSX file using the button below. The file remains on your device.</p>
+              <div class="anonymizer-drop-actions">
+                <button type="button" id="choose-file-button">Choose file</button>
+                <button type="button" id="clear-file-button" class="secondary" disabled>Clear file</button>
+              </div>
+              <input id="file-input" class="visually-hidden" type="file" tabindex="-1" aria-label="Choose a CSV, JSON, or XLSX file" accept=".csv,.json,.xlsx,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            </div>
+
+            <div id="file-summary" class="anonymizer-file-summary" hidden>
+              <span class="anonymizer-file-summary__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg>
+              </span>
+              <div class="anonymizer-file-summary__copy">
+                <strong id="file-name"></strong>
+                <p id="file-meta" class="app-help-text"></p>
+              </div>
+            </div>
+          </div>
+
+          <section id="mapping-section" class="app-card" aria-labelledby="mapping-heading" hidden>
+            <div class="app-toolbar anonymizer-mapping-toolbar">
+              <div>
+                <h2 id="mapping-heading" tabindex="-1">Choose how to anonymize each field</h2>
+                <p class="app-help-text">Empty values remain empty. Select at least one field before downloading.</p>
+              </div>
+              <div class="app-field anonymizer-bulk-field">
+                <label for="bulk-action">Set all fields</label>
+                <select id="bulk-action">
+                  <option value="">Choose an action</option>
+                  <option value="none">Leave unchanged</option>
+                  <option value="hash">Hash with SHA-256</option>
+                  <option value="redact">Redact</option>
+                  <option value="fake_name">Synthetic full name</option>
+                  <option value="fake_email">Synthetic email address</option>
+                  <option value="fake_phone">Synthetic phone number</option>
+                  <option value="fake_address">Synthetic street address</option>
+                  <option value="fake_date">Synthetic past date</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="app-table-wrap">
+              <table class="anonymizer-mapping-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Field</th>
+                    <th scope="col">Anonymization action</th>
+                  </tr>
+                </thead>
+                <tbody id="mapping-rows"></tbody>
+              </table>
+            </div>
+
+            <p id="mapping-selection-status" class="app-help-text" role="status" aria-live="polite">No fields selected for anonymization.</p>
+
+            <div class="app-actions anonymizer-actions">
+              <button type="button" id="process-button" disabled>Anonymize and download</button>
+              <button type="button" id="reset-mappings-button" class="secondary" disabled>Reset field choices</button>
+            </div>
+
+            <div id="progress-wrap" class="anonymizer-progress" hidden>
+              <progress id="progress" value="0" max="100"></progress>
+              <p id="progress-text" class="app-help-text">Preparing data...</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="about" class="app-card" data-tab-section="about" hidden>
+        <h2>About</h2>
+        <p>Local Anonymizer changes structured data in your browser and downloads a new file. The selected file and its contents are not uploaded by this page.</p>
+
+        <h3>Supported files</h3>
+        <ul>
+          <li><strong>CSV:</strong> The first row must contain field names.</li>
+          <li><strong>JSON:</strong> The top level must be an array of objects.</li>
+          <li><strong>XLSX:</strong> Only the first worksheet is read. The downloaded workbook contains data only and does not preserve formulas, formatting, charts, or additional worksheets.</li>
+        </ul>
+
+        <h3>Anonymization actions</h3>
+        <dl class="anonymizer-methods">
+          <dt>Hash with SHA-256</dt>
+          <dd>Replaces a value with a repeatable hash. Equal source values produce equal hashes.</dd>
+          <dt>Redact</dt>
+          <dd>Replaces every non-empty value with <code>---REDACTED---</code>.</dd>
+          <dt>Synthetic value</dt>
+          <dd>Replaces a value with generated sample data. Repeated source values in the same field receive the same replacement during one download.</dd>
+        </dl>
+
+        <h3>Important limitations</h3>
+        <ul>
+          <li>A hash is pseudonymization, not guaranteed anonymization. Common or predictable values may be guessed by comparing hashes.</li>
+          <li>Synthetic values do not preserve logical relationships between different fields. For example, a generated name and a generated email may not describe the same person.</li>
+          <li>Review the downloaded file before sharing or using it. This tool does not determine whether a dataset is legally or operationally safe to release.</li>
+          <li>Very large files may exceed the browser's available memory.</li>
+        </ul>
+      </section>
+
+      <section id="updates" class="app-card" data-tab-section="updates" hidden>
+        <h2>Updates</h2>
+        <p class="app-help-text">Update history is not configured for this standalone transfer package. Configure the repository link when the app is published.</p>
+      </section>
+    </main>
+
+    <footer class="app-footer" role="contentinfo"><div class="app-footer__inner"><a href="https://marincountygov.github.io/marin-os/">MarinOS</a></div></footer>
+    <a class="app-feedback" href="https://form.asana.com/?k=qVUT83d5DBmlDiIyi-WAyQ&amp;d=23133298259496" target="_blank" rel="noreferrer">Feedback</a>
+
+    <noscript>
+      <div class="container app-alert app-alert--danger">JavaScript is required to anonymize files in the browser.</div>
+    </noscript>
+
+    <script src="libs/papaparse.min.js"></script>
+    <script src="libs/xlsx.full.min.js"></script>
+    <script src="libs/crypto-js.min.js"></script>
+    <script src="libs/faker.min.js"></script>
+    <script src="shared/app-shell.js"></script>
+    <script src="assets/app.js"></script>
+  </body>
+</html>
