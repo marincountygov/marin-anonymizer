@@ -50,7 +50,7 @@ Do not replace these files with runtime CDN references. The app includes compati
 
 ## MarinOS integration
 
-The package includes the MarinOS app shell, navigation, footer, feedback link, responsive behavior, light/dark color tokens, accessible status messages, and full-page drag-and-drop behavior modeled on Marin Zipper and Marin Unzipper.
+The package includes the MarinOS app shell, navigation, footer, feedback link, responsive behavior, light/dark color tokens, accessible status messages, and full-page drag-and-drop behavior modeled on Marin Zipper and Marin Unzipper. The MarinOS banner refreshes from the published MarinOS catalog, with the links in `index.html` retained as a fallback if the catalog cannot be loaded.
 
 This transfer package uses a self-contained compatible CSS baseline and system-font fallbacks. Before publishing into a repository that vendors Marin UI, replace `shared/app-brand.css`, `shared/app-shell.js`, `vendor/pico.min.css`, and `BRAND_VERSION` with the complete approved Marin UI release together. Then retest the app-specific files under `assets/`.
 
