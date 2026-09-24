@@ -99,6 +99,27 @@ body.is-dragging .anonymizer-dropzone {
   margin: 0.2rem 0 0;
 }
 
+.anonymizer-worksheet-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.anonymizer-worksheet-field {
+  flex: 0 1 24rem;
+  width: min(100%, 24rem);
+  margin-bottom: 0;
+}
+
+.anonymizer-worksheet-controls p {
+  flex: 1 1 24rem;
+  margin: 0 0 0.25rem;
+}
+
 .anonymizer-mapping-toolbar {
   align-items: flex-end;
 }
@@ -199,6 +220,15 @@ body.is-dragging .anonymizer-drop-overlay {
   .anonymizer-dropzone {
     min-height: 17rem;
     padding: 1.25rem;
+  }
+
+  .anonymizer-worksheet-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .anonymizer-worksheet-field {
+    width: 100%;
   }
 
   .anonymizer-drop-actions,

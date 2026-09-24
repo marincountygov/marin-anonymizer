@@ -9,17 +9,18 @@ Open `index.html` in a modern browser. No server, package manager, build step, o
 ## Workflow
 
 1. Drop one supported file anywhere on the page or select **Choose file**.
-2. Choose an anonymization action for one or more fields.
-3. Select **Anonymize and download**.
-4. Review the downloaded file before sharing or using it.
+2. For XLSX files, choose one worksheet or **All worksheets**.
+3. Choose an anonymization action for one or more fields. When multiple worksheets are selected, a rule applies to every matching field name across those worksheets.
+4. Select **Anonymize and download**.
+5. Review the downloaded file before sharing or using it.
 
 ## Supported input
 
 - CSV with a header row
 - JSON with a top-level array of objects
-- XLSX; only the first worksheet is read
+- XLSX with one or more worksheets; choose one worksheet or all worksheets after opening the file
 
-The XLSX output is a new data-only workbook. It does not preserve formulas, formatting, charts, or additional worksheets.
+The XLSX output is a new data-only workbook. When all worksheets are selected, the output remains one XLSX file with the selected worksheet names, order, and hidden state. It does not preserve formulas, formatting, charts, or other workbook features.
 
 ## Anonymization actions
 
