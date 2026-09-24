@@ -21,6 +21,9 @@
     headers: [],
     extension: "",
     sourceMeta: {},
+    sheets: [],
+    worksheetScope: "all",
+    mappingSelections: new Map(),
     isBusy: false,
     dragDepth: 0,
     downloadUrl: null
@@ -35,6 +38,9 @@
     fileSummary: document.getElementById("file-summary"),
     fileName: document.getElementById("file-name"),
     fileMeta: document.getElementById("file-meta"),
+    worksheetControls: document.getElementById("worksheet-controls"),
+    worksheetSelect: document.getElementById("worksheet-select"),
+    worksheetHelp: document.getElementById("worksheet-help"),
     mappingSection: document.getElementById("mapping-section"),
     mappingHeading: document.getElementById("mapping-heading"),
     mappingRows: document.getElementById("mapping-rows"),
@@ -143,6 +149,7 @@
     elements.chooseFileButton.disabled = busy;
     elements.clearFileButton.disabled = busy || !state.file;
     elements.fileInput.disabled = busy;
+    elements.worksheetSelect.disabled = busy || !state.file;
     elements.bulkAction.disabled = busy || !state.file;
     elements.resetMappingsButton.disabled = busy || !state.file;
     elements.mappingRows.querySelectorAll("select").forEach((select) => {
@@ -161,7 +168,7 @@
 
   function updateActionState() {
     const selectedCount = getMappings().size;
-    const hasFile = Boolean(state.file && state.data.length && state.headers.length);
+    const hasFile = Boolean(state.file && getActiveRowCount() && state.headers.length);
     elements.processButton.disabled = state.isBusy || !hasFile || selectedCount === 0;
     elements.clearFileButton.disabled = state.isBusy || !state.file;
     elements.resetMappingsButton.disabled = state.isBusy || !hasFile;
@@ -196,13 +203,14 @@
     });
 
     select.addEventListener("change", () => {
+      state.mappingSelections.set(column, select.value);
       elements.bulkAction.value = "";
       updateActionState();
     });
     return select;
   }
 
-  function renderMappings() {
+  function renderMappings(savedSelections = state.mappingSelections) {
     elements.mappingRows.replaceChildren();
     const fragment = document.createDocumentFragment();
 
@@ -212,6 +220,7 @@
       const actionCell = document.createElement("td");
       const label = document.createElement("label");
       const select = buildActionSelect(header, index);
+      if (savedSelections.has(header)) select.value = savedSelections.get(header);
 
       label.className = "anonymizer-field-name";
       label.htmlFor = select.id;
@@ -253,6 +262,31 @@
     const headers = collectHeaders(rows);
     if (!headers.length) throw new Error("The file does not contain any field names.");
     return { rows, headers };
+  }
+
+  function getActiveSheets() {
+    if (state.extension !== "xlsx") return [];
+    if (state.worksheetScope === "all") return state.sheets;
+    const index = Number.parseInt(state.worksheetScope, 10);
+    return Number.isInteger(index) && state.sheets[index] ? [state.sheets[index]] : [];
+  }
+
+  function collectSheetHeaders(sheets) {
+    const headers = [];
+    const seen = new Set();
+    sheets.forEach((sheet) => {
+      sheet.headers.forEach((header) => {
+        if (seen.has(header)) return;
+        seen.add(header);
+        headers.push(header);
+      });
+    });
+    return headers;
+  }
+
+  function getActiveRowCount() {
+    if (state.extension !== "xlsx") return state.data.length;
+    return getActiveSheets().reduce((total, sheet) => total + sheet.data.length, 0);
   }
 
   function parseCsv(file) {
@@ -301,15 +335,29 @@
 
   async function parseXlsx(file) {
     const workbook = window.XLSX.read(await file.arrayBuffer(), { type: "array" });
-    const sheetName = workbook.SheetNames[0];
-    if (!sheetName) throw new Error("The workbook does not contain a worksheet.");
-    const worksheet = workbook.Sheets[sheetName];
-    const rows = window.XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: false });
-    const normalized = normalizeRows(rows, "The first worksheet");
+    if (!workbook.SheetNames.length) throw new Error("The workbook does not contain a worksheet.");
+
+    const sheets = workbook.SheetNames.map((sheetName, index) => {
+      const worksheet = workbook.Sheets[sheetName];
+      const hidden = Number(workbook.Workbook?.Sheets?.[index]?.Hidden) || 0;
+      const rows = window.XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: false });
+      if (!rows.length) return { name: sheetName, data: [], headers: [], hidden };
+      const normalized = normalizeRows(rows, `Worksheet "${sheetName}"`);
+      return { name: sheetName, data: normalized.rows, headers: normalized.headers, hidden };
+    });
+
+    const populatedSheets = sheets.filter((sheet) => sheet.data.length && sheet.headers.length);
+    if (!populatedSheets.length) throw new Error("The workbook does not contain any data rows.");
+
     return {
-      data: normalized.rows,
-      headers: normalized.headers,
-      meta: { format: "Excel workbook", sheetName }
+      data: [],
+      headers: collectSheetHeaders(populatedSheets),
+      sheets,
+      meta: {
+        format: "Excel workbook",
+        sheetCount: sheets.length,
+        rowCount: sheets.reduce((total, sheet) => total + sheet.data.length, 0)
+      }
     };
   }
 
@@ -324,14 +372,70 @@
     if (window.location.hash !== "#start") window.location.hash = "start";
   }
 
+  function renderWorksheetControls() {
+    elements.worksheetSelect.replaceChildren();
+    if (state.extension !== "xlsx" || state.sheets.length < 2) {
+      elements.worksheetControls.hidden = true;
+      return;
+    }
+
+    const allOption = document.createElement("option");
+    allOption.value = "all";
+    allOption.textContent = `All worksheets (${state.sheets.length})`;
+    elements.worksheetSelect.append(allOption);
+
+    state.sheets.forEach((sheet, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      const visibility = sheet.hidden === 2 ? ", very hidden" : sheet.hidden === 1 ? ", hidden" : "";
+      option.textContent = `${sheet.name} (${pluralize(sheet.data.length, "row")}${visibility})`;
+      option.disabled = !sheet.data.length || !sheet.headers.length;
+      elements.worksheetSelect.append(option);
+    });
+
+    elements.worksheetSelect.value = state.worksheetScope;
+    elements.worksheetControls.hidden = false;
+    updateWorksheetHelp();
+  }
+
+  function updateWorksheetHelp() {
+    if (state.extension !== "xlsx") {
+      elements.worksheetHelp.textContent = "";
+      return;
+    }
+    if (state.worksheetScope === "all") {
+      elements.worksheetHelp.textContent = "Field choices apply to matching field names across all worksheets. Empty worksheets are included in the downloaded workbook.";
+      return;
+    }
+    const sheet = getActiveSheets()[0];
+    elements.worksheetHelp.textContent = sheet
+      ? `Only the ${sheet.name} worksheet will be included in the downloaded workbook.`
+      : "";
+  }
+
   function renderFileSummary() {
     const details = [
       state.sourceMeta.format,
-      formatBytes(state.file.size),
-      pluralize(state.data.length, "row"),
-      pluralize(state.headers.length, "field")
+      formatBytes(state.file.size)
     ];
-    if (state.sourceMeta.sheetName) details.push(`worksheet: ${state.sourceMeta.sheetName}`);
+
+    if (state.extension === "xlsx") {
+      const activeSheets = getActiveSheets();
+      details.push(pluralize(state.sheets.length, "worksheet"));
+      if (state.worksheetScope === "all") {
+        details.push("all worksheets");
+        details.push(pluralize(getActiveRowCount(), "row"));
+        details.push(`${pluralize(state.headers.length, "unique field")}`);
+      } else if (activeSheets[0]) {
+        details.push(`worksheet: ${activeSheets[0].name}`);
+        details.push(pluralize(activeSheets[0].data.length, "row"));
+        details.push(pluralize(activeSheets[0].headers.length, "field"));
+      }
+    } else {
+      details.push(pluralize(state.data.length, "row"));
+      details.push(pluralize(state.headers.length, "field"));
+    }
+
     elements.fileName.textContent = state.file.name;
     elements.fileMeta.textContent = details.join(" | ");
     elements.fileSummary.hidden = false;
@@ -363,6 +467,11 @@
       state.data = parsed.data;
       state.headers = parsed.headers;
       state.sourceMeta = parsed.meta;
+      state.sheets = parsed.sheets || [];
+      state.worksheetScope = "all";
+      state.mappingSelections.clear();
+      if (extension === "xlsx") state.headers = collectSheetHeaders(getActiveSheets());
+      renderWorksheetControls();
       renderFileSummary();
       renderMappings();
       updateProgress(1, 1, "File ready");
@@ -383,6 +492,7 @@
   }
 
   function resetMappings() {
+    state.mappingSelections.clear();
     elements.mappingRows.querySelectorAll("select").forEach((select) => {
       select.value = "none";
     });
@@ -398,10 +508,16 @@
     state.headers = [];
     state.extension = "";
     state.sourceMeta = {};
+    state.sheets = [];
+    state.worksheetScope = "all";
+    state.mappingSelections.clear();
     elements.fileInput.value = "";
     elements.fileSummary.hidden = true;
     elements.fileName.textContent = "";
     elements.fileMeta.textContent = "";
+    elements.worksheetSelect.replaceChildren();
+    elements.worksheetHelp.textContent = "";
+    elements.worksheetControls.hidden = true;
     elements.mappingRows.replaceChildren();
     elements.mappingSection.hidden = true;
     elements.bulkAction.value = "";
@@ -443,30 +559,69 @@
     return cache.get(key);
   }
 
-  async function transformData(mappings) {
+  function createReplacementCaches(mappings) {
     const replacementCaches = new Map();
     mappings.forEach((rule, column) => {
       if (rule.startsWith("fake_")) replacementCaches.set(`${column}\u0000${rule}`, new Map());
     });
+    return replacementCaches;
+  }
 
+  async function transformRows(rows, mappings, replacementCaches, progressState, sheetName = "") {
     const output = [];
-    const total = state.data.length;
-    for (let index = 0; index < total; index += 1) {
-      const sourceRow = state.data[index];
+    for (let index = 0; index < rows.length; index += 1) {
+      const sourceRow = rows[index];
       const newRow = { ...sourceRow };
       mappings.forEach((rule, column) => {
         if (!Object.prototype.hasOwnProperty.call(newRow, column)) return;
-        const cache = replacementCaches.get(`${column}\u0000${rule}`) ?? new Map();
+        const cache = rule.startsWith("fake_")
+          ? replacementCaches.get(`${column}\u0000${rule}`)
+          : null;
         newRow[column] = transformValue(newRow[column], rule, cache);
       });
       output.push(newRow);
+      progressState.completed += 1;
 
-      if ((index + 1) % YIELD_INTERVAL === 0 || index + 1 === total) {
-        updateProgress(index + 1, total, `Anonymizing ${pluralize(index + 1, "row")}`);
+      if ((index + 1) % YIELD_INTERVAL === 0 || index + 1 === rows.length) {
+        const context = sheetName ? ` in ${sheetName}` : "";
+        updateProgress(
+          progressState.completed,
+          progressState.total,
+          `${pluralize(progressState.completed, "row")} processed${context}`
+        );
         await yieldToBrowser();
       }
     }
     return output;
+  }
+
+  async function transformData(mappings) {
+    const replacementCaches = createReplacementCaches(mappings);
+    const progressState = { completed: 0, total: state.data.length };
+    return transformRows(state.data, mappings, replacementCaches, progressState);
+  }
+
+  async function transformWorkbook(mappings) {
+    const replacementCaches = createReplacementCaches(mappings);
+    const activeSheets = getActiveSheets();
+    const progressState = { completed: 0, total: getActiveRowCount() };
+    const outputSheets = [];
+
+    for (const sheet of activeSheets) {
+      if (!sheet.data.length) {
+        outputSheets.push({ ...sheet, data: [] });
+        continue;
+      }
+      const data = await transformRows(
+        sheet.data,
+        mappings,
+        replacementCaches,
+        progressState,
+        sheet.name
+      );
+      outputSheets.push({ ...sheet, data });
+    }
+    return outputSheets;
   }
 
   function exportData(data, extension, filename) {
@@ -476,15 +631,31 @@
     } else if (extension === "csv") {
       const csv = window.Papa.unparse(data, { newline: "\r\n" });
       blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
-    } else if (extension === "xlsx") {
-      const worksheet = window.XLSX.utils.json_to_sheet(data, { header: state.headers });
-      const workbook = window.XLSX.utils.book_new();
-      window.XLSX.utils.book_append_sheet(workbook, worksheet, "Anonymized Data");
-      const output = window.XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-      blob = new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     } else {
       throw new Error("The output format is not supported.");
     }
+    triggerDownload(blob, filename);
+    return blob.size;
+  }
+
+  function exportWorkbook(sheets, filename) {
+    const workbook = window.XLSX.utils.book_new();
+    sheets.forEach((sheet) => {
+      const worksheet = sheet.data.length
+        ? window.XLSX.utils.json_to_sheet(sheet.data, { header: sheet.headers })
+        : window.XLSX.utils.aoa_to_sheet([]);
+      window.XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+    });
+    workbook.Workbook = workbook.Workbook || {};
+    workbook.Workbook.Sheets = sheets.map((sheet) => ({
+      name: sheet.name,
+      Hidden: sheet.hidden || 0
+    }));
+    const output = window.XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob(
+      [output],
+      { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+    );
     triggerDownload(blob, filename);
     return blob.size;
   }
@@ -497,18 +668,31 @@
       return;
     }
 
+    const totalRows = getActiveRowCount();
     setBusy(true);
     elements.progressWrap.hidden = false;
-    updateProgress(0, state.data.length, "Preparing data");
+    updateProgress(0, totalRows, "Preparing data");
     setStatus("Anonymizing data...", "info");
 
     try {
-      const output = await transformData(mappings);
-      updateProgress(state.data.length, state.data.length, "Creating download");
-      await yieldToBrowser();
       const filename = safeOutputFilename(state.file.name, state.extension);
-      const outputSize = exportData(output, state.extension, filename);
-      setStatus(`Download started: ${filename} (${formatBytes(outputSize)}).`, "success");
+      let outputSize;
+      let detail = "";
+
+      if (state.extension === "xlsx") {
+        const outputSheets = await transformWorkbook(mappings);
+        updateProgress(totalRows, totalRows, "Creating workbook");
+        await yieldToBrowser();
+        outputSize = exportWorkbook(outputSheets, filename);
+        detail = ` with ${pluralize(outputSheets.length, "worksheet")}`;
+      } else {
+        const output = await transformData(mappings);
+        updateProgress(totalRows, totalRows, "Creating download");
+        await yieldToBrowser();
+        outputSize = exportData(output, state.extension, filename);
+      }
+
+      setStatus(`Download started: ${filename} (${formatBytes(outputSize)})${detail}.`, "success");
     } catch (error) {
       setStatus(`The file could not be anonymized: ${error?.message || error}`, "danger");
     } finally {
@@ -543,10 +727,24 @@
     if (file) loadFile(file);
   });
 
+  elements.worksheetSelect.addEventListener("change", () => {
+    if (state.isBusy || state.extension !== "xlsx") return;
+    state.worksheetScope = elements.worksheetSelect.value;
+    state.headers = collectSheetHeaders(getActiveSheets());
+    renderFileSummary();
+    updateWorksheetHelp();
+    renderMappings();
+    const scopeLabel = state.worksheetScope === "all"
+      ? "all worksheets"
+      : `worksheet ${getActiveSheets()[0]?.name || ""}`.trim();
+    setStatus(`Field choices now apply to ${scopeLabel}.`, "info");
+  });
+
   elements.bulkAction.addEventListener("change", () => {
     if (!elements.bulkAction.value) return;
     elements.mappingRows.querySelectorAll("select").forEach((select) => {
       select.value = elements.bulkAction.value;
+      state.mappingSelections.set(select.dataset.column, select.value);
     });
     updateActionState();
   });
