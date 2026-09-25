@@ -55,8 +55,15 @@
   };
 
   function setStatus(message, type = "info") {
-    elements.status.textContent = message;
-    elements.status.className = `app-alert app-alert--${type}`;
+    const trimmed = String(message || "").trim();
+    if (trimmed) {
+      elements.status.textContent = message;
+      elements.status.className = `app-alert app-alert--${type}`;
+      elements.status.hidden = false;
+    } else {
+      elements.status.textContent = "";
+      elements.status.hidden = true;
+    }
   }
 
   function clearStatus() {
