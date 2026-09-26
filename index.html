@@ -60,6 +60,7 @@
           <nav class="app-nav" id="app-nav" aria-label="Application navigation">
             <a href="#about">About</a>
             <a href="#updates">Updates</a>
+            <a href="#security">Security</a>
           </nav>
         </div>
       </div>
@@ -196,11 +197,30 @@
           <li>Review the downloaded file before sharing or using it. This tool does not determine whether a dataset is legally or operationally safe to release.</li>
           <li>Very large files may exceed the browser's available memory.</li>
         </ul>
+        <h3>Related information</h3>
+        <ul>
+          <li><a href="#security">Security</a></li>
+        </ul>
       </section>
 
       <section id="updates" class="app-card" data-tab-section="updates" hidden>
         <h2>Updates</h2>
         <p class="app-help-text">Update history is not configured for this standalone transfer package. Configure the repository link when the app is published.</p>
+      </section>
+
+      <section id="security" class="app-card" data-tab-section="security" data-security-json="security.json" hidden>
+        <h2>Security</h2>
+        <p>Marin Anonymizer follows the <a href="https://github.com/marincountygov/marin-digital-standards/blob/main/security/standard.md">MarinOS security standard</a>.</p>
+        <h3>Report an issue</h3>
+        <p>See <a href="/.well-known/security.txt">security.txt</a> for contact details.</p>
+        <h3>Application security</h3>
+        <p data-security-status class="app-help-text" role="status" aria-live="polite" aria-atomic="true">Loading security information&hellip;</p>
+        <div data-security-content></div>
+        <h3>Technical information</h3>
+        <ul>
+          <li><a href="security.json">security.json</a></li>
+          <li><a href="/.well-known/security.txt">security.txt</a></li>
+        </ul>
       </section>
     </main>
 
