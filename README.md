@@ -38,6 +38,10 @@ Repeated source values in the same field receive the same synthetic replacement 
 
 SHA-256 hashing is pseudonymization, not guaranteed anonymization. Common or predictable source values can be guessed by hashing candidate values and comparing the result. This app does not determine whether a dataset is legally or operationally safe to release.
 
+## Security
+
+Marin Anonymizer follows the [MarinOS security standard](https://github.com/marincountygov/marin-digital-standards/blob/main/security/standard.md). See [`SECURITY.md`](SECURITY.md) to report an issue, the app's own `#security` section for a plain-language summary, or "Important security limitation" above for what anonymization in this app does and doesn't guarantee.
+
 ## Local dependencies
 
 Runtime files are bundled under `libs/`:
