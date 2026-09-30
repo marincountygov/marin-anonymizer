@@ -4,13 +4,7 @@ Marin Anonymizer is a browser-only MarinOS utility for replacing values in CSV, 
 
 ## Run locally
 
-Serve the repository over local HTTP:
-
-```bash
-python3 -m http.server 8765
-```
-
-Open `http://127.0.0.1:8765/` in a modern browser.
+Clone or download this repository's files and either place them on your webserver or open index.html from your computer's file system.
 
 No package manager or build step is required. File processing remains local to the browser. The shared MarinOS shell may use an internet connection to load the MarinOS catalog and recent repository updates; those optional interface features do not receive the selected file or its contents.
 
