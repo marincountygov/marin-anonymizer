@@ -1,4 +1,644 @@
 (() => {
+  "use strict";
+
+  if (window.MarinAppShell?.version) {
+    console.warn(`Marin App Shell ${window.MarinAppShell.version} is already loaded.`);
+    return;
+  }
+
+  const SHELL_VERSION = "1.0.0";
+  const MARIN_UI_VERSION = "1.18.0";
+  const MARINOS_URL = "https://marincountygov.github.io/marin-os/";
+  const CATALOG_URL = `${MARINOS_URL}catalog.json`;
+  const FEEDBACK_URL = "https://form.asana.com/?k=qVUT83d5DBmlDiIyi-WAyQ&d=23133298259496";
+  const SECURITY_STANDARD_URL =
+    "https://github.com/marincountygov/marin-digital-standards/blob/main/security/standard.md";
+
+  const STANDARD_LINKS = Object.freeze({
+    about: "About",
+    security: "Security",
+    accessibility: "Accessibility",
+    updates: "Updates",
+  });
+
+  const FALLBACK_APPS = Object.freeze([
+    {
+      name: "MarinMagic",
+      url: "https://marincountygov.github.io/marin-magic/",
+      icon: {
+        viewBox: "0 0 24 24",
+        markup:
+          '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/>',
+      },
+    },
+    {
+      name: "Marin Decision Maker",
+      url: "https://marincountygov.github.io/marin-decision-maker/",
+      icon: {
+        viewBox: "0 0 24 24",
+        markup:
+          '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>',
+      },
+    },
+    {
+      name: "MarinDocs",
+      url: "https://marincountygov.github.io/marin-docs/",
+      icon: {
+        viewBox: "0 0 24 24",
+        markup:
+          '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+      },
+    },
+  ]);
+
+  function componentWarning(element, message) {
+    console.warn(`[Marin App Shell ${SHELL_VERSION}] <${element.localName}>: ${message}`, element);
+  }
+
+  function normalizedAttribute(element, name, fallback = "") {
+    const value = element.getAttribute(name)?.trim();
+    return value || fallback;
+  }
+
+  function parseTokenList(value, fallback) {
+    const source = typeof value === "string" && value.trim() ? value : fallback;
+    return source
+      .split(/[\s,]+/)
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  function cloneTemplate(element, selector) {
+    const template = element.querySelector(selector);
+    return template instanceof HTMLTemplateElement ? template.content.cloneNode(true) : null;
+  }
+
+  function createGridIcon() {
+    const namespace = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(namespace, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    [
+      [3, 3],
+      [14, 3],
+      [14, 14],
+      [3, 14],
+    ].forEach(([x, y]) => {
+      const rect = document.createElementNS(namespace, "rect");
+      rect.setAttribute("width", "7");
+      rect.setAttribute("height", "7");
+      rect.setAttribute("x", String(x));
+      rect.setAttribute("y", String(y));
+      rect.setAttribute("rx", "1");
+      svg.append(rect);
+    });
+    return svg;
+  }
+
+  function createStaticSvg(viewBox, markup) {
+    const namespace = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(namespace, "svg");
+    svg.setAttribute("viewBox", viewBox || "0 0 24 24");
+    // This function is used only with immutable icon markup bundled in this file.
+    svg.innerHTML = markup;
+    return svg;
+  }
+
+  const SAFE_SVG_ELEMENTS = new Set(["circle", "ellipse", "line", "path", "polygon", "polyline", "rect"]);
+  const SAFE_SVG_ATTRIBUTES = new Set([
+    "cx",
+    "cy",
+    "d",
+    "fill",
+    "height",
+    "points",
+    "r",
+    "rx",
+    "ry",
+    "stroke",
+    "stroke-linecap",
+    "stroke-linejoin",
+    "stroke-width",
+    "transform",
+    "width",
+    "x",
+    "x1",
+    "x2",
+    "y",
+    "y1",
+    "y2",
+  ]);
+
+  function safeLinkUrl(value) {
+    try {
+      const url = new URL(String(value), window.location.href);
+      return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function createCatalogSvg(iconData) {
+    if (!iconData || typeof iconData.markup !== "string" || typeof iconData.viewBox !== "string") return null;
+    if (!/^[0-9+.,\s-]+$/.test(iconData.viewBox)) return null;
+
+    const parser = new DOMParser();
+    const parsed = parser.parseFromString(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${iconData.viewBox}">${iconData.markup}</svg>`,
+      "image/svg+xml"
+    );
+    if (parsed.querySelector("parsererror")) return null;
+
+    const namespace = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(namespace, "svg");
+    svg.setAttribute("viewBox", iconData.viewBox);
+
+    function cloneSafeElement(source, destination) {
+      Array.from(source.children).forEach((child) => {
+        const name = child.localName;
+        if (!SAFE_SVG_ELEMENTS.has(name)) return;
+        const clone = document.createElementNS(namespace, name);
+        Array.from(child.attributes).forEach((attribute) => {
+          if (SAFE_SVG_ATTRIBUTES.has(attribute.name)) clone.setAttribute(attribute.name, attribute.value);
+        });
+        cloneSafeElement(child, clone);
+        destination.append(clone);
+      });
+    }
+
+    cloneSafeElement(parsed.documentElement, svg);
+    return svg.childElementCount ? svg : null;
+  }
+
+  function createMenuLink(entry, trustedIcon = false) {
+    const href = safeLinkUrl(entry?.url);
+    const name = typeof entry?.name === "string" ? entry.name.trim() : "";
+    if (!href || !name) return null;
+
+    const link = document.createElement("a");
+    link.href = href;
+
+    const svg = trustedIcon
+      ? entry.icon?.markup
+        ? createStaticSvg(entry.icon.viewBox, entry.icon.markup)
+        : null
+      : createCatalogSvg(entry.icon);
+    if (svg) {
+      const icon = document.createElement("span");
+      icon.className = "marinos-menu__icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.append(svg);
+      link.append(icon);
+    }
+
+    link.append(document.createTextNode(name));
+    return link;
+  }
+
+  class MarinOsBanner extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.rendered === "true") return;
+      this.dataset.rendered = "true";
+
+      const label = normalizedAttribute(this, "label", "ALPHA");
+      const catalogUrl = normalizedAttribute(this, "catalog-url", CATALOG_URL);
+      const browseUrl = normalizedAttribute(this, "browse-url", MARINOS_URL);
+
+      const banner = document.createElement("div");
+      banner.className = "marinos-banner";
+
+      const inner = document.createElement("div");
+      inner.className = "marinos-banner__inner";
+
+      const menu = document.createElement("div");
+      menu.className = "menu marinos-menu";
+
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "menu-toggle marinos-menu__toggle";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-controls", "marinos-menu-panel");
+
+      const brandIcon = document.createElement("span");
+      brandIcon.className = "marinos-banner__icon";
+      brandIcon.setAttribute("aria-hidden", "true");
+      brandIcon.append(createGridIcon());
+      toggle.append(brandIcon, document.createTextNode("MarinOS"));
+
+      if (label) {
+        const sup = document.createElement("sup");
+        sup.textContent = label;
+        toggle.append(sup);
+      }
+
+      const caret = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      caret.classList.add("menu-toggle__caret");
+      caret.setAttribute("aria-hidden", "true");
+      caret.setAttribute("viewBox", "0 0 24 24");
+      const caretPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      caretPath.setAttribute("d", "m6 9 6 6 6-6");
+      caret.append(caretPath);
+      toggle.append(caret);
+
+      const panel = document.createElement("div");
+      panel.id = "marinos-menu-panel";
+      panel.className = "menu-panel marinos-menu__panel";
+      panel.hidden = true;
+      panel.dataset.catalogUrl = catalogUrl;
+
+      FALLBACK_APPS.forEach((entry) => {
+        const link = createMenuLink(entry, true);
+        if (link) panel.append(link);
+      });
+
+      const allLink = document.createElement("a");
+      allLink.className = "marinos-menu__all";
+      allLink.href = browseUrl;
+      allLink.textContent = "Browse all in MarinOS";
+      panel.append(allLink);
+
+      menu.append(toggle, panel);
+      inner.append(menu);
+      banner.append(inner);
+      this.replaceChildren(banner);
+    }
+  }
+
+  class MarinAppHeader extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.rendered === "true") return;
+
+      const iconTemplate = cloneTemplate(this, "template[data-icon]");
+      const navigationTemplate = cloneTemplate(this, "template[data-navigation]");
+      const appName = normalizedAttribute(this, "app-name", "Application");
+      const description = normalizedAttribute(this, "app-description");
+      const navigationLabel = normalizedAttribute(this, "navigation-label", "Application navigation");
+      const standardLinks = parseTokenList(this.getAttribute("standard-links"), "about updates");
+
+      if (!this.hasAttribute("app-name")) componentWarning(this, 'missing required "app-name" attribute');
+
+      const header = document.createElement("header");
+      header.className = "app-header";
+      header.dataset.marinosShellVersion = SHELL_VERSION;
+
+      const inner = document.createElement("div");
+      inner.className = "app-header__inner";
+
+      const identity = document.createElement("div");
+      identity.className = "app-identity";
+
+      const titleRow = document.createElement("div");
+      titleRow.className = "app-title-row";
+
+      const icon = document.createElement("span");
+      icon.className = "app-icon";
+      icon.setAttribute("aria-hidden", "true");
+      if (iconTemplate) icon.append(iconTemplate);
+      else icon.append(createGridIcon());
+
+      const titleCopy = document.createElement("div");
+      titleCopy.className = "app-title-copy";
+      const heading = document.createElement("h1");
+      heading.className = "app-title";
+      heading.textContent = appName;
+      titleCopy.append(heading);
+
+      if (description) {
+        const subtitle = document.createElement("p");
+        subtitle.className = "app-subtitle";
+        subtitle.textContent = description;
+        titleCopy.append(subtitle);
+      }
+
+      titleRow.append(icon, titleCopy);
+      identity.append(titleRow);
+
+      const actions = document.createElement("div");
+      actions.className = "app-header__actions";
+
+      const menuToggle = document.createElement("button");
+      menuToggle.type = "button";
+      menuToggle.className = "app-menu-toggle secondary";
+      menuToggle.id = "menu-toggle";
+      menuToggle.setAttribute("aria-expanded", "false");
+      menuToggle.setAttribute("aria-controls", "app-nav");
+      menuToggle.textContent = normalizedAttribute(this, "menu-label", "Menu");
+
+      const navigation = document.createElement("nav");
+      navigation.className = "app-nav";
+      navigation.id = "app-nav";
+      navigation.setAttribute("aria-label", navigationLabel);
+
+      const seenHrefs = new Set();
+      if (navigationTemplate) {
+        navigationTemplate.querySelectorAll("a[href]").forEach((sourceLink) => {
+          const link = sourceLink.cloneNode(true);
+          const href = link.getAttribute("href");
+          if (!href || seenHrefs.has(href)) return;
+          seenHrefs.add(href);
+          navigation.append(link);
+        });
+      }
+
+      standardLinks.forEach((key) => {
+        const label = STANDARD_LINKS[key];
+        const href = `#${key}`;
+        if (!label || seenHrefs.has(href)) return;
+        const link = document.createElement("a");
+        link.href = href;
+        link.textContent = label;
+        seenHrefs.add(href);
+        navigation.append(link);
+      });
+
+      actions.append(menuToggle, navigation);
+      inner.append(identity, actions);
+      header.append(inner);
+
+      this.replaceChildren(header);
+      this.dataset.rendered = "true";
+    }
+  }
+
+  class MarinAppInfo extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.rendered === "true") return;
+
+      const templates = {
+        about: cloneTemplate(this, "template[data-about]"),
+        security: cloneTemplate(this, "template[data-security-intro]"),
+        accessibility: cloneTemplate(this, "template[data-accessibility]"),
+        updates: cloneTemplate(this, "template[data-updates-intro]"),
+      };
+      const appName = normalizedAttribute(this, "app-name", "This application");
+      const repo = normalizedAttribute(this, "repo");
+      const securityJson = normalizedAttribute(this, "security-src", "security.json");
+      const securityStandardUrl = normalizedAttribute(this, "security-standard-url", SECURITY_STANDARD_URL);
+      const securityContactUrl = normalizedAttribute(this, "security-contact-url", ".well-known/security.txt");
+      const sectionKeys = parseTokenList(
+        this.getAttribute("sections"),
+        "about security accessibility updates"
+      ).filter((key, index, values) => STANDARD_LINKS[key] && values.indexOf(key) === index);
+
+      if (!this.hasAttribute("app-name")) componentWarning(this, 'missing recommended "app-name" attribute');
+      if (sectionKeys.includes("updates") && !repo) {
+        componentWarning(this, 'the Updates section has no "repo" attribute');
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      sectionKeys.forEach((key) => {
+        const existing = document.getElementById(key);
+        if (existing && !this.contains(existing)) {
+          componentWarning(this, `#${key} already exists; the shell did not create a duplicate section`);
+          return;
+        }
+
+        const section = document.createElement("section");
+        section.id = key;
+        section.className = "app-card";
+        section.dataset.tabSection = key;
+        section.hidden = true;
+
+        const heading = document.createElement("h2");
+        heading.textContent = STANDARD_LINKS[key];
+        section.append(heading);
+
+        if (key === "about") {
+          if (templates.about) {
+            section.append(templates.about);
+          } else {
+            const paragraph = document.createElement("p");
+            paragraph.textContent = `${appName} is a MarinOS application maintained by the County of Marin.`;
+            section.append(paragraph);
+          }
+
+          const relatedKeys = sectionKeys.filter((item) => item !== "about");
+          if (relatedKeys.length) {
+            const relatedHeading = document.createElement("h3");
+            relatedHeading.textContent = "Related information";
+            const list = document.createElement("ul");
+            relatedKeys.forEach((item) => {
+              const listItem = document.createElement("li");
+              const link = document.createElement("a");
+              link.href = `#${item}`;
+              link.textContent = STANDARD_LINKS[item];
+              listItem.append(link);
+              list.append(listItem);
+            });
+            section.append(relatedHeading, list);
+          }
+        }
+
+        if (key === "security") {
+          const standard = document.createElement("p");
+          standard.append(document.createTextNode(`${appName} follows the `));
+          const standardLink = document.createElement("a");
+          standardLink.href = securityStandardUrl;
+          standardLink.textContent = "MarinOS security standard";
+          standard.append(standardLink, document.createTextNode("."));
+          section.append(standard);
+
+          if (templates.security) section.append(templates.security);
+
+          const reportHeading = document.createElement("h3");
+          reportHeading.textContent = "Report an issue";
+          const reportParagraph = document.createElement("p");
+          reportParagraph.append(document.createTextNode("See "));
+          const reportLink = document.createElement("a");
+          reportLink.href = securityContactUrl;
+          reportLink.textContent = "security.txt";
+          reportParagraph.append(reportLink, document.createTextNode(" for contact details."));
+
+          const applicationHeading = document.createElement("h3");
+          applicationHeading.textContent = "Application security";
+          const status = document.createElement("p");
+          status.className = "app-help-text";
+          status.dataset.securityStatus = "";
+          status.setAttribute("role", "status");
+          status.setAttribute("aria-live", "polite");
+          status.setAttribute("aria-atomic", "true");
+          status.innerHTML = "Loading security information&hellip;";
+          const content = document.createElement("div");
+          content.dataset.securityContent = "";
+
+          const technicalHeading = document.createElement("h3");
+          technicalHeading.textContent = "Technical information";
+          const technicalList = document.createElement("ul");
+          [
+            [securityJson, "security.json"],
+            [securityContactUrl, "security.txt"],
+          ].forEach(([href, label]) => {
+            const item = document.createElement("li");
+            const link = document.createElement("a");
+            link.href = href;
+            link.textContent = label;
+            item.append(link);
+            technicalList.append(item);
+          });
+
+          section.dataset.securityJson = securityJson;
+          section.append(
+            reportHeading,
+            reportParagraph,
+            applicationHeading,
+            status,
+            content,
+            technicalHeading,
+            technicalList
+          );
+        }
+
+        if (key === "accessibility") {
+          if (templates.accessibility) {
+            section.append(templates.accessibility);
+          } else {
+            const description = document.createElement("p");
+            description.textContent =
+              `${appName} uses the shared MarinOS interface, including keyboard focus styles, responsive layouts, and reduced-motion support.`;
+            const reporting = document.createElement("p");
+            reporting.textContent =
+              "Use the Feedback control to report an accessibility problem. Include the task, page or feature, browser, and assistive technology involved, when applicable.";
+            section.append(description, reporting);
+          }
+        }
+
+        if (key === "updates") {
+          if (templates.updates) section.append(templates.updates);
+          const status = document.createElement("p");
+          status.className = "app-help-text";
+          status.dataset.updatesStatus = "";
+          status.setAttribute("role", "status");
+          status.setAttribute("aria-live", "polite");
+          status.setAttribute("aria-atomic", "true");
+          status.innerHTML = repo ? "Loading recent commits&hellip;" : "Updates are not configured for this application.";
+          const list = document.createElement("div");
+          list.dataset.updatesList = "";
+          if (repo) section.dataset.updatesRepo = repo;
+          section.dataset.appName = appName;
+          section.append(status, list);
+        }
+
+        fragment.append(section);
+      });
+
+      this.replaceChildren(fragment);
+      this.dataset.rendered = "true";
+    }
+  }
+
+  class MarinAppFooter extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.rendered === "true") return;
+
+      const appName = normalizedAttribute(this, "app-name", "Application");
+      const links = parseTokenList(this.getAttribute("links"), "about security accessibility updates").filter(
+        (key, index, values) => STANDARD_LINKS[key] && values.indexOf(key) === index
+      );
+      const platformName = normalizedAttribute(this, "platform-name", "MarinOS");
+      const platformUrl = normalizedAttribute(this, "platform-url", MARINOS_URL);
+
+      if (!this.hasAttribute("app-name")) componentWarning(this, 'missing required "app-name" attribute');
+
+      const footer = document.createElement("footer");
+      footer.className = "app-footer";
+      footer.setAttribute("role", "contentinfo");
+      footer.dataset.marinosShellVersion = SHELL_VERSION;
+
+      const inner = document.createElement("div");
+      inner.className = "app-footer__inner";
+      const local = document.createElement("div");
+      local.className = "app-footer__local";
+      const name = document.createElement("span");
+      name.className = "app-footer__app-name";
+      name.textContent = appName;
+      local.append(name);
+
+      if (links.length) {
+        const navigation = document.createElement("nav");
+        navigation.className = "app-footer__nav";
+        navigation.setAttribute("aria-label", `${appName} information`);
+        links.forEach((key) => {
+          const link = document.createElement("a");
+          link.href = `#${key}`;
+          link.textContent = STANDARD_LINKS[key];
+          navigation.append(link);
+        });
+        local.append(navigation);
+      }
+
+      const platform = document.createElement("div");
+      platform.className = "app-footer__platform";
+      const platformLink = document.createElement("a");
+      platformLink.href = platformUrl;
+      platformLink.textContent = platformName;
+      platform.append(platformLink);
+
+      inner.append(local, platform);
+      footer.append(inner);
+      this.replaceChildren(footer);
+      this.dataset.rendered = "true";
+    }
+  }
+
+  class MarinAppFeedback extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.rendered === "true") return;
+
+      const href = normalizedAttribute(this, "href", FEEDBACK_URL);
+      const label = normalizedAttribute(this, "label", "Feedback");
+      const target = normalizedAttribute(this, "target", "_blank");
+      const link = document.createElement("a");
+      link.className = "app-feedback";
+      link.href = href;
+      link.textContent = label;
+      if (target) {
+        link.target = target;
+        if (target === "_blank") link.rel = "noreferrer";
+      }
+      this.replaceChildren(link);
+      this.dataset.rendered = "true";
+    }
+  }
+
+  const componentDefinitions = [
+    ["marin-os-banner", MarinOsBanner],
+    ["marin-app-header", MarinAppHeader],
+    ["marin-app-info", MarinAppInfo],
+    ["marin-app-footer", MarinAppFooter],
+    ["marin-app-feedback", MarinAppFeedback],
+  ];
+
+  componentDefinitions.forEach(([name, constructor]) => {
+    if (!customElements.get(name)) customElements.define(name, constructor);
+  });
+
+  function ensureInfrastructure() {
+    if (!document.querySelector(".skip-link")) {
+      const skipLink = document.createElement("a");
+      skipLink.className = "skip-link";
+      skipLink.href = "#main";
+      skipLink.textContent = "Skip to main content";
+      document.body.prepend(skipLink);
+    }
+
+    const main = document.querySelector("main#main");
+    if (!main) {
+      console.warn(`[Marin App Shell ${SHELL_VERSION}] No <main id="main"> element was found.`);
+      return;
+    }
+
+    if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1");
+    if (!document.querySelector("#app-status-message")) {
+      const status = document.createElement("div");
+      status.id = "app-status-message";
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
+      main.prepend(status);
+    }
+  }
+
+  ensureInfrastructure();
+
   const menuToggle = document.querySelector("#menu-toggle");
   const navigation = document.querySelector("#app-nav");
   const menuQuery = window.matchMedia("(max-width: 720px)");
@@ -77,7 +717,7 @@
   // visit doesn't refetch the catalog on every page load.
   const marinosMenuPanel = document.querySelector("#marinos-menu-panel");
   if (marinosMenuPanel) {
-    const CATALOG_URL = "https://marincountygov.github.io/marin-os/catalog.json";
+    const menuCatalogUrl = marinosMenuPanel.dataset.catalogUrl || CATALOG_URL;
     // Bump this whenever the expected catalog shape or rendering changes
     // (for example, adding the `icon` field) so browsers holding an older
     // cached shape refetch immediately instead of waiting out the TTL.
@@ -108,22 +748,17 @@
     function renderMarinosMenu(entries) {
       if (!Array.isArray(entries)) return;
       const current = window.location.href;
-      const items = entries.filter((entry) => entry && entry.url && entry.name && !current.startsWith(entry.url));
-      if (!items.length) return;
+      const links = entries
+        .map((entry) => createMenuLink(entry))
+        .filter((link) => link && !current.startsWith(link.href));
+      if (!links.length) return;
 
       const allLink = marinosMenuPanel.querySelector(".marinos-menu__all");
       marinosMenuPanel.querySelectorAll("a:not(.marinos-menu__all)").forEach((link) => link.remove());
-      const links = items
-        .map((entry) => {
-          const icon =
-            entry.icon && entry.icon.viewBox && entry.icon.markup
-              ? `<span class="marinos-menu__icon" aria-hidden="true"><svg viewBox="${entry.icon.viewBox}">${entry.icon.markup}</svg></span>`
-              : "";
-          return `<a href="${entry.url}">${icon}${entry.name}</a>`;
-        })
-        .join("");
-      if (allLink) allLink.insertAdjacentHTML("beforebegin", links);
-      else marinosMenuPanel.insertAdjacentHTML("beforeend", links);
+      const fragment = document.createDocumentFragment();
+      fragment.append(...links);
+      if (allLink) allLink.before(fragment);
+      else marinosMenuPanel.append(fragment);
     }
 
     // Stale-while-revalidate: the cache is only for instant paint on repeat
@@ -137,7 +772,7 @@
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
-    fetch(CATALOG_URL, { signal: controller.signal })
+    fetch(menuCatalogUrl, { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error("bad response"))))
       .then((entries) => {
         writeCatalogCache(entries);
@@ -683,4 +1318,17 @@
       if (!section.hidden) loadSecurity();
     }).observe(section, { attributes: true, attributeFilter: ["hidden"] });
   });
+
+  document.documentElement.dataset.marinShellVersion = SHELL_VERSION;
+  document.documentElement.dataset.marinUiVersion = MARIN_UI_VERSION;
+  window.MarinAppShell = Object.freeze({
+    version: SHELL_VERSION,
+    marinUiVersion: MARIN_UI_VERSION,
+    components: Object.freeze(componentDefinitions.map(([name]) => name)),
+  });
+  document.dispatchEvent(
+    new CustomEvent("marinos:shell-ready", {
+      detail: { version: SHELL_VERSION, marinUiVersion: MARIN_UI_VERSION },
+    })
+  );
 })();

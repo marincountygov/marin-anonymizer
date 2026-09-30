@@ -1,10 +1,18 @@
-# Local Anonymizer
+# Marin Anonymizer
 
-Local Anonymizer is a browser-only MarinOS utility for replacing values in CSV, JSON, and XLSX files. Files are read, transformed, and downloaded locally. The page does not upload selected data.
+Marin Anonymizer is a browser-only MarinOS utility for replacing values in CSV, JSON, and XLSX files. Files are read, transformed, and downloaded locally. The page does not upload selected data.
 
 ## Run locally
 
-Open `index.html` in a modern browser. No server, package manager, build step, or internet connection is required.
+Serve the repository over local HTTP:
+
+```bash
+python3 -m http.server 8765
+```
+
+Open `http://127.0.0.1:8765/` in a modern browser.
+
+No package manager or build step is required. File processing remains local to the browser. The shared MarinOS shell may use an internet connection to load the MarinOS catalog and recent repository updates; those optional interface features do not receive the selected file or its contents.
 
 ## Workflow
 
@@ -40,7 +48,7 @@ SHA-256 hashing is pseudonymization, not guaranteed anonymization. Common or pre
 
 ## Security
 
-Marin Anonymizer follows the [MarinOS security standard](https://github.com/marincountygov/marin-digital-standards/blob/main/security/standard.md). See [`SECURITY.md`](SECURITY.md) to report an issue, the app's own `#security` section for a plain-language summary, or "Important security limitation" above for what anonymization in this app does and doesn't guarantee.
+Marin Anonymizer follows the [MarinOS security standard](https://github.com/marincountygov/marin-digital-standards/blob/main/security/standard.md). See [`SECURITY.md`](SECURITY.md) to report an issue, the app's own `#security` section for a plain-language summary, or **Important security limitation** above for what anonymization in this app does and does not guarantee.
 
 ## Local dependencies
 
@@ -55,8 +63,8 @@ Do not replace these files with runtime CDN references. The app includes compati
 
 ## MarinOS integration
 
-The package includes the MarinOS app shell, navigation, footer, feedback link, responsive behavior, light/dark color tokens, accessible status messages, and full-page drag-and-drop behavior modeled on Marin Zipper and Marin Unzipper. The MarinOS banner refreshes from the published MarinOS catalog, with the links in `index.html` retained as a fallback if the catalog cannot be loaded.
+Marin Anonymizer vendors Marin App Shell under `vendor/marinos/`. The pinned shell version is recorded in `marin.yml`.
 
-This transfer package uses a self-contained compatible CSS baseline and system-font fallbacks. Before publishing into a repository that vendors Marin UI, replace `shared/app-brand.css`, `shared/app-shell.js`, `vendor/pico.min.css`, and `BRAND_VERSION` with the complete approved Marin UI release together. Then retest the app-specific files under `assets/`.
+The shell provides the MarinOS banner and catalog menu, application header, standard About, Security, Accessibility, and Updates sections, navigation, footer, Feedback control, responsive behavior, shared design tokens, and common accessibility infrastructure. Application-specific behavior and styling remain in `assets/app.js` and `assets/app.css`.
 
-The Updates tab intentionally contains no repository link because a publication repository was not provided. Configure that link after the repository name and deployment URL are established.
+Do not edit files under `vendor/marinos/` in this repository. Upgrade the shell by replacing that complete directory with a tagged shell release and updating `platform.shell` in `marin.yml`. The app-level fonts remain under `vendor/fonts/`.

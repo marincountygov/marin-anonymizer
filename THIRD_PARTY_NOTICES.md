@@ -8,3 +8,12 @@ This package includes local browser builds of the following open-source librarie
 - Faker 3.1.0: https://github.com/Marak/Faker.js — MIT License
 
 The original library files under `libs/` are unchanged from the uploaded package.
+
+The vendored Marin App Shell release under `vendor/marinos/` also includes or incorporates:
+
+- Marin App Shell 1.0.0 — MIT License
+- Pico CSS 2.1.1 — MIT License
+- Lucide icons — ISC License and MIT License, as applicable
+- Open Sans — SIL Open Font License 1.1
+
+Retain the notices under `vendor/marinos/licenses/` when redistributing or upgrading the shell. The bundled `marinos.css` file retains the Pico CSS copyright and license header.

@@ -6,12 +6,19 @@
     <title>Marin Anonymizer | County of Marin</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='10' fill='%23000'/%3E%3Cg fill='none' stroke='%23e5b53b' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round' transform='translate(9,9) scale(1.25)'%3E%3Cpath d='M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z'/%3E%3Ccircle cx='12' cy='9' r='2.5'/%3E%3Cpath d='M7.8 18.4c.8-3 2.2-4.4 4.2-4.4s3.4 1.4 4.2 4.4'/%3E%3C/g%3E%3C/svg%3E">
     <meta name="description" content="Anonymize CSV, JSON, and Excel files locally in your browser.">
-    <link rel="stylesheet" href="vendor/pico.min.css">
-    <link rel="stylesheet" href="shared/app-brand.css">
+    <link rel="stylesheet" href="vendor/marinos/marinos.css">
     <link rel="stylesheet" href="assets/app.css">
+    <script src="libs/papaparse.min.js" defer></script>
+    <script src="libs/xlsx.full.min.js" defer></script>
+    <script src="libs/crypto-js.min.js" defer></script>
+    <script src="libs/faker.min.js" defer></script>
+    <script src="vendor/marinos/marinos.js" defer></script>
+    <script src="assets/app.js" defer></script>
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to main content</a>
+    <noscript>
+      <div class="container app-alert app-alert--danger" role="alert">JavaScript is required to anonymize files in the browser.</div>
+    </noscript>
 
     <div class="anonymizer-drop-overlay" aria-hidden="true">
       <div class="anonymizer-drop-overlay__panel">
@@ -23,52 +30,18 @@
       </div>
     </div>
 
-    <div class="marinos-banner">
-      <div class="marinos-banner__inner">
-        <div class="menu marinos-menu">
-          <button type="button" class="menu-toggle marinos-menu__toggle" aria-expanded="false" aria-controls="marinos-menu-panel">
-            <span class="marinos-banner__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></span>
-            MarinOS<sup>ALPHA</sup>
-            <svg class="menu-toggle__caret" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-          <div id="marinos-menu-panel" class="menu-panel marinos-menu__panel" hidden>
-            <a href="https://marincountygov.github.io/marin-magic/"><span class="marinos-menu__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></span>MarinMagic</a>
-            <a href="https://marincountygov.github.io/marin-docs/"><span class="marinos-menu__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>MarinDocs</a>
-            <a href="https://marincountygov.github.io/marin-zipper/"><span class="marinos-menu__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v11.5"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M8 12v-1"/><path d="M8 18v-2"/><path d="M8 7V6"/><circle cx="8" cy="20" r="2"/></svg></span>Marin Zipper</a>
-            <a href="https://marincountygov.github.io/marin-unzipper/"><span class="marinos-menu__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22v-9"/><path d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"/><path d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"/><path d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"/></svg></span>Marin Unzipper</a>
-            <a class="marinos-menu__all" href="https://marincountygov.github.io/marin-os/">Browse all in MarinOS</a>
-          </div>
-        </div>
-      </div>
-    </div>
+    <marin-os-banner></marin-os-banner>
 
-    <header class="app-header" role="banner">
-      <div class="app-header__inner">
-        <div class="app-identity">
-          <a href="./" class="app-title-row">
-            <span class="app-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/><circle cx="12" cy="9" r="2.5"/><path d="M7.8 18.4c.8-3 2.2-4.4 4.2-4.4s3.4 1.4 4.2 4.4"/></svg>
-            </span>
-            <div class="app-title-copy">
-              <h1 class="app-title">Marin Anonymizer</h1>
-              <p class="app-subtitle">Anonymize CSV, JSON, and Excel files locally in your browser.</p>
-            </div>
-          </a>
-        </div>
-        <div class="app-header__actions">
-          <button type="button" class="app-menu-toggle secondary" id="menu-toggle" aria-expanded="false" aria-controls="app-nav">Menu</button>
-          <nav class="app-nav" id="app-nav" aria-label="Application navigation">
-            <a href="#about">About</a>
-            <a href="#updates">Updates</a>
-            <a href="#security">Security</a>
-          </nav>
-        </div>
-      </div>
-    </header>
+    <marin-app-header
+      app-name="Marin Anonymizer"
+      app-description="Anonymize CSV, JSON, and Excel files locally in your browser."
+    >
+      <template data-icon>
+        <svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/><circle cx="12" cy="9" r="2.5"/><path d="M7.8 18.4c.8-3 2.2-4.4 4.2-4.4s3.4 1.4 4.2 4.4"/></svg>
+      </template>
+    </marin-app-header>
 
-    <main id="main" class="container app-main" tabindex="-1">
-      <div id="app-status-message" class="app-alert app-alert--info" role="status" aria-live="polite" aria-atomic="true" hidden></div>
-
+    <main id="main" class="container app-main">
       <section id="start" data-tab-section="start" aria-labelledby="start-heading">
         <div class="anonymizer-grid">
           <div class="app-card">
@@ -153,89 +126,56 @@
         </div>
       </section>
 
-      <section id="about" class="app-card" data-tab-section="about" hidden>
-        <h2>About</h2>
-        <p>Marin Anonymizer changes structured data in your browser and downloads a new file. The selected file and its contents are not uploaded by this page.</p>
+      <marin-app-info
+        app-name="Marin Anonymizer"
+        repo="marin-anonymizer"
+        security-src="security.json"
+      >
+        <template data-about>
+          <p>Marin Anonymizer changes structured data in your browser and downloads a new file. The selected file and its contents are not uploaded by this page.</p>
 
-        <h3>Supported files</h3>
-        <ul>
-          <li><strong>CSV:</strong> The first row must contain field names.</li>
-          <li><strong>JSON:</strong> The top level must be an array of objects.</li>
-          <li><strong>XLSX:</strong> Choose one worksheet or all worksheets. When all worksheets are selected, the download remains a single multi-worksheet XLSX file. Worksheet names, order, and hidden state are retained. The downloaded workbook contains data only and does not preserve formulas, formatting, charts, or other workbook features.</li>
-        </ul>
+          <h3>Supported files</h3>
+          <ul>
+            <li><strong>CSV:</strong> The first row must contain field names.</li>
+            <li><strong>JSON:</strong> The top level must be an array of objects.</li>
+            <li><strong>XLSX:</strong> Choose one worksheet or all worksheets. When all worksheets are selected, the download remains a single multi-worksheet XLSX file. Worksheet names, order, and hidden state are retained. The downloaded workbook contains data only and does not preserve formulas, formatting, charts, or other workbook features.</li>
+          </ul>
 
-        <h3>Anonymization actions</h3>
-        <dl class="anonymizer-methods">
-          <dt>Hash with SHA-256</dt>
-          <dd>Replaces a value with a repeatable hash. Equal source values produce equal hashes.</dd>
-          <dt>Redact</dt>
-          <dd>Replaces every non-empty value with <code>---REDACTED---</code>.</dd>
-          <dt>Synthetic value</dt>
-          <dd>Replaces a value with generated sample data. Repeated source values in the same field receive the same replacement during one download.</dd>
-        </dl>
+          <h3>Anonymization actions</h3>
+          <dl class="anonymizer-methods">
+            <dt>Hash with SHA-256</dt>
+            <dd>Replaces a value with a repeatable hash. Equal source values produce equal hashes.</dd>
+            <dt>Redact</dt>
+            <dd>Replaces every non-empty value with <code>---REDACTED---</code>.</dd>
+            <dt>Synthetic value</dt>
+            <dd>Replaces a value with generated sample data. Repeated source values in the same field receive the same replacement during one download.</dd>
+          </dl>
 
-<h3>What can I use Local Anonymizer for?</h3>
+          <h3>What can I use Marin Anonymizer for?</h3>
+          <p>Marin Anonymizer can help when you need to work with realistic data but should not use people's actual information. It replaces selected information—such as names, email addresses, phone numbers, addresses, and dates—with made-up values while keeping the overall structure of your data.</p>
+          <p>Common uses include:</p>
+          <ul>
+            <li><strong>Reporting and dashboards:</strong> Create, test, or demonstrate reports and dashboards without displaying real personal information.</li>
+            <li><strong>Software development:</strong> Give developers realistic sample data for building and testing applications without providing access to the original information.</li>
+            <li><strong>Training and demonstrations:</strong> Prepare example data for presentations, training sessions, screenshots, or demonstrations.</li>
+            <li><strong>Sharing data:</strong> Create a safer version of a file to share with coworkers, contractors, or other partners when they do not need the real identifying information.</li>
+            <li><strong>Testing data processes:</strong> Test imports, exports, conversions, and other automated processes using data that has the same general structure as the original file.</li>
+            <li><strong>Troubleshooting:</strong> Reproduce a problem with a dataset without sending the original personal information to someone helping investigate the issue.</li>
+          </ul>
+          <p>Marin Anonymizer is intended to reduce unnecessary use and sharing of personal information. Anonymizing selected fields does not automatically make a dataset safe to share. Other information in the file may still identify a person when combined with other data. Review the resulting file before sharing it.</p>
 
-<p>Marin Anonymizer can help when you need to work with realistic data but should not use people's actual information. It replaces selected information—such as names, email addresses, phone numbers, addresses, and dates—with made-up values while keeping the overall structure of your data.</p>
-
-<p>Common uses include:</p>
-<ul>
-<li>Reporting and dashboards: Create, test, or demonstrate reports and dashboards without displaying real personal information.</li>
-<li>Software development: Give developers realistic sample data for building and testing applications without providing access to the original information.</li>
-<li>Training and demonstrations: Prepare example data for presentations, training sessions, screenshots, or demonstrations.</li>
-<li>Sharing data: Create a safer version of a file to share with coworkers, contractors, or other partners when they do not need the real identifying information.</li>
-<li>Testing data processes: Test imports, exports, conversions, and other automated processes using data that has the same general structure as the original file.</li>
-<li>Troubleshooting: Reproduce a problem with a dataset without sending the original personal information to someone helping investigate the issue.</li>
-</ul>
-
-<p>Marin Anonymizer is intended to reduce unnecessary use and sharing of personal information. Anonymizing selected fields does not automatically make a dataset safe to share. Other information in the file may still identify a person when combined with other data. Review the resulting file before sharing it.</p>
-
-        <h3>Important limitations</h3>
-        <ul>
-          <li>A hash is pseudonymization, not guaranteed anonymization. Common or predictable values may be guessed by comparing hashes.</li>
-          <li>Synthetic values do not preserve logical relationships between different fields. For example, a generated name and a generated email may not describe the same person.</li>
-          <li>Review the downloaded file before sharing or using it. This tool does not determine whether a dataset is legally or operationally safe to release.</li>
-          <li>Very large files may exceed the browser's available memory.</li>
-        </ul>
-        <h3>Related information</h3>
-        <ul>
-          <li><a href="#security">Security</a></li>
-        </ul>
-      </section>
-
-      <section id="updates" class="app-card" data-tab-section="updates" hidden>
-        <h2>Updates</h2>
-        <p class="app-help-text">Update history is not configured for this standalone transfer package. Configure the repository link when the app is published.</p>
-      </section>
-
-      <section id="security" class="app-card" data-tab-section="security" data-security-json="security.json" hidden>
-        <h2>Security</h2>
-        <p>Marin Anonymizer follows the <a href="https://github.com/marincountygov/marin-digital-standards/blob/main/security/standard.md">MarinOS security standard</a>.</p>
-        <h3>Report an issue</h3>
-        <p>See <a href=".well-known/security.txt">security.txt</a> for contact details.</p>
-        <h3>Application security</h3>
-        <p data-security-status class="app-help-text" role="status" aria-live="polite" aria-atomic="true">Loading security information&hellip;</p>
-        <div data-security-content></div>
-        <h3>Technical information</h3>
-        <ul>
-          <li><a href="security.json">security.json</a></li>
-          <li><a href=".well-known/security.txt">security.txt</a></li>
-        </ul>
-      </section>
+          <h3>Important limitations</h3>
+          <ul>
+            <li>A hash is pseudonymization, not guaranteed anonymization. Common or predictable values may be guessed by comparing hashes.</li>
+            <li>Synthetic values do not preserve logical relationships between different fields. For example, a generated name and a generated email may not describe the same person.</li>
+            <li>Review the downloaded file before sharing or using it. This tool does not determine whether a dataset is legally or operationally safe to release.</li>
+            <li>Very large files may exceed the browser's available memory.</li>
+          </ul>
+        </template>
+      </marin-app-info>
     </main>
 
-    <footer class="app-footer" role="contentinfo"><div class="app-footer__inner"><a href="https://marincountygov.github.io/marin-os/">MarinOS</a></div></footer>
-    <a class="app-feedback" href="https://form.asana.com/?k=qVUT83d5DBmlDiIyi-WAyQ&amp;d=23133298259496" target="_blank" rel="noreferrer">Feedback</a>
-
-    <noscript>
-      <div class="container app-alert app-alert--danger">JavaScript is required to anonymize files in the browser.</div>
-    </noscript>
-
-    <script src="libs/papaparse.min.js"></script>
-    <script src="libs/xlsx.full.min.js"></script>
-    <script src="libs/crypto-js.min.js"></script>
-    <script src="libs/faker.min.js"></script>
-    <script src="shared/app-shell.js"></script>
-    <script src="assets/app.js"></script>
+    <marin-app-footer app-name="Marin Anonymizer"></marin-app-footer>
+    <marin-app-feedback></marin-app-feedback>
   </body>
 </html>
