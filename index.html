@@ -52,8 +52,8 @@
               <h2 id="start-heading">Drop a data file anywhere on this page</h2>
               <p class="app-help-text">You can also choose one CSV, JSON, or XLSX file using the button below. The file remains on your device.</p>
               <div class="anonymizer-drop-actions">
-                <button type="button" id="choose-file-button">Choose file</button>
-                <button type="button" id="clear-file-button" class="secondary" disabled>Clear file</button>
+                <button type="button" id="choose-file-button" class="action-button" data-icon="upload">Choose file</button>
+                <button type="button" id="clear-file-button" class="action-button" data-icon="x" aria-label="Clear file" title="Clear file" disabled></button>
               </div>
               <input id="file-input" class="visually-hidden" type="file" tabindex="-1" aria-label="Choose a CSV, JSON, or XLSX file" accept=".csv,.json,.xlsx,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
             </div>
@@ -114,8 +114,8 @@
             <p id="mapping-selection-status" class="app-help-text" role="status" aria-live="polite">No fields selected for anonymization.</p>
 
             <div class="app-actions anonymizer-actions">
-              <button type="button" id="process-button" disabled>Anonymize and download</button>
-              <button type="button" id="reset-mappings-button" class="secondary" disabled>Reset field choices</button>
+              <button type="button" id="process-button" class="primary" disabled>Anonymize and download</button>
+              <button type="button" id="reset-mappings-button" class="action-button" data-icon="rotate-ccw" aria-label="Reset field choices" title="Reset field choices" disabled></button>
             </div>
 
             <div id="progress-wrap" class="anonymizer-progress" hidden>
