@@ -55,6 +55,26 @@ Runtime files are bundled under `libs/`:
 
 Do not replace these files with runtime CDN references. The app includes compatibility code for the bundled Faker 3.1.0 API as well as newer Faker browser APIs.
 
+## Tests
+
+Run the existing static checks (Python 3 and optional Node.js):
+
+```sh
+bash scripts/check.sh
+```
+
+Browser tests require **test-only** Python packages and Chromium; neither is needed by the published app:
+
+```sh
+python3 -m pip install -r tests/requirements.txt
+python3 -m playwright install chromium
+bash scripts/check.sh --browser
+```
+
+The browser test serves the app from a localhost URL subpath, uploads only the invented records in `tests/fixtures/synthetic-records.csv`, then downloads and independently checks the resulting CSV, JSON, and XLSX files. It verifies redaction, unsalted SHA-256 output, blanks, leading-zero IDs, unchanged fields, and the names and hidden state of XLSX worksheets. The JSON and XLSX inputs are generated from the same fixture at test time. No selected data is uploaded to a remote server.
+
+If the runner blocks browser navigation to localhost, run `bash scripts/check.sh --browser-in-memory` instead. This uses the same checked-in HTML, app code, and vendored JavaScript libraries inside an in-memory browser page. **This fallback tests the data transformations and downloads but does not test HTTP loading, asset URL routing, or Content Security Policy enforcement.** To use a specific installed browser, set `CHROMIUM_EXECUTABLE=/path/to/chromium`.
+
 ## MarinOS integration
 
 Marin Anonymizer vendors Marin App Shell under `vendor/marinos/`. The pinned shell version is recorded in `marin.yml`.
