@@ -17,7 +17,8 @@ from pathlib import Path
 import re
 import sys
 
-SKIP_DIRS = {".git", "node_modules", "vendor", "tests", "docs", "archive", "__pycache__"}
+# Third-party libraries (libs/, lib/, minified files) are not the app's own code.
+SKIP_DIRS = {".git", "node_modules", "vendor", "libs", "lib", "tests", "docs", "archive", "__pycache__"}
 SUFFIXES = {".js", ".html", ".mjs"}
 RULES = (
     ("copy", re.compile(r"execCommand\(\s*['\"]copy['\"]\s*\)|navigator\.clipboard\.(?:write|writeText)\("), "marinCopyRich / marinCopyText"),
@@ -31,7 +32,7 @@ def scan(root: Path) -> list[tuple[str, str, int, str]]:
     findings = []
     uses_upload = False
     for path in sorted(root.rglob("*")):
-        if not path.is_file() or path.suffix not in SUFFIXES:
+        if not path.is_file() or path.suffix not in SUFFIXES or path.name.endswith(".min.js"):
             continue
         if SKIP_DIRS & set(path.relative_to(root).parts[:-1]):
             continue

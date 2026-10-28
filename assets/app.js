@@ -25,8 +25,6 @@
     worksheetScope: "all",
     mappingSelections: new Map(),
     isBusy: false,
-    dragDepth: 0,
-    downloadUrl: null
   };
 
   const elements = {
@@ -113,23 +111,8 @@
     return new Promise((resolve) => requestAnimationFrame(resolve));
   }
 
-  function revokeDownloadUrl() {
-    if (!state.downloadUrl) return;
-    URL.revokeObjectURL(state.downloadUrl);
-    state.downloadUrl = null;
-  }
-
   function triggerDownload(blob, filename) {
-    revokeDownloadUrl();
-    state.downloadUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = state.downloadUrl;
-    link.download = filename;
-    link.style.display = "none";
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(revokeDownloadUrl, 60000);
+    marinDownload({ content: blob, name: filename });
   }
 
   function safeOutputFilename(filename, extension) {
@@ -296,9 +279,10 @@
     return getActiveSheets().reduce((total, sheet) => total + sheet.data.length, 0);
   }
 
-  function parseCsv(file) {
+  async function parseCsv(file) {
+    const { text } = await marinReadText(file);
     return new Promise((resolve, reject) => {
-      window.Papa.parse(file, {
+      window.Papa.parse(text, {
         header: true,
         skipEmptyLines: "greedy",
         complete(results) {
@@ -328,7 +312,7 @@
   async function parseJson(file) {
     let parsed;
     try {
-      parsed = JSON.parse(await file.text());
+      parsed = JSON.parse((await marinReadText(file)).text);
     } catch (error) {
       throw new Error(`The JSON file is not valid: ${error.message}`);
     }
@@ -509,7 +493,6 @@
   }
 
   function resetFile(options = {}) {
-    revokeDownloadUrl();
     state.file = null;
     state.data = [];
     state.headers = [];
@@ -708,30 +691,23 @@
     }
   }
 
-  function hasFilesInDrag(event) {
-    return Array.from(event.dataTransfer?.types || []).includes("Files");
-  }
-
-  function setDragActive(active) {
-    elements.body.classList.toggle("is-dragging", active);
-    elements.dropzone.dataset.active = String(active);
-  }
-
-  function resetDragState() {
-    state.dragDepth = 0;
-    setDragActive(false);
-  }
-
-  elements.chooseFileButton.addEventListener("click", () => elements.fileInput.click());
   elements.clearFileButton.addEventListener("click", () => {
     resetFile();
     setStatus("File cleared.", "info");
   });
 
-  elements.fileInput.addEventListener("change", () => {
-    const [file] = Array.from(elements.fileInput.files || []);
-    elements.fileInput.value = "";
-    if (file) loadFile(file);
+  marinUpload({
+    button: elements.chooseFileButton,
+    input: elements.fileInput,
+    accept: [".csv", ".json", ".xlsx"],
+    onFile: (file) => {
+      if (state.isBusy) {
+        setStatus("Wait for the current operation to finish before choosing another file.", "warning");
+        return;
+      }
+      loadFile(file);
+    },
+    onMessage: (text) => setStatus(text, "warning")
   });
 
   elements.worksheetSelect.addEventListener("change", () => {
@@ -758,57 +734,6 @@
 
   elements.resetMappingsButton.addEventListener("click", resetMappings);
   elements.processButton.addEventListener("click", processAndDownload);
-
-  window.addEventListener("dragenter", (event) => {
-    if (!hasFilesInDrag(event)) return;
-    event.preventDefault();
-    if (state.isBusy) {
-      resetDragState();
-      return;
-    }
-    state.dragDepth += 1;
-    setDragActive(true);
-  });
-
-  window.addEventListener("dragover", (event) => {
-    if (!hasFilesInDrag(event)) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = state.isBusy ? "none" : "copy";
-    if (state.isBusy) {
-      resetDragState();
-      return;
-    }
-    setDragActive(true);
-  });
-
-  window.addEventListener("dragleave", (event) => {
-    if (!hasFilesInDrag(event)) return;
-    if (state.isBusy) {
-      resetDragState();
-      return;
-    }
-    state.dragDepth = Math.max(0, state.dragDepth - 1);
-    if (state.dragDepth === 0) setDragActive(false);
-  });
-
-  window.addEventListener("drop", (event) => {
-    if (!hasFilesInDrag(event)) return;
-    event.preventDefault();
-    resetDragState();
-    if (state.isBusy) {
-      setStatus("Wait for the current operation to finish before choosing another file.", "warning");
-      return;
-    }
-    const files = Array.from(event.dataTransfer?.files || []);
-    if (files.length !== 1) {
-      setStatus("Drop one CSV, JSON, or XLSX file at a time.", "warning");
-      return;
-    }
-    loadFile(files[0]);
-  });
-
-  window.addEventListener("blur", resetDragState);
-  window.addEventListener("beforeunload", revokeDownloadUrl);
 
   const missingLibraries = [
     ["Papa Parse", window.Papa],
