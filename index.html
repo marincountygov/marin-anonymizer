@@ -20,16 +20,6 @@
       <div class="container app-alert app-alert--danger" role="alert">JavaScript is required to anonymize files in the browser.</div>
     </noscript>
 
-    <div class="anonymizer-drop-overlay" aria-hidden="true">
-      <div class="anonymizer-drop-overlay__panel">
-        <span class="anonymizer-drop-overlay__icon" aria-hidden="true">
-          <svg viewBox="0 0 48 48"><path d="M24 6v24"/><path d="m14 18 10-12 10 12"/><path d="M8 29v10a3 3 0 0 0 3 3h26a3 3 0 0 0 3-3V29"/></svg>
-        </span>
-        <p class="anonymizer-drop-overlay__title">Drop one data file to open it</p>
-        <p class="app-help-text">CSV, JSON, and XLSX files are processed locally in this browser.</p>
-      </div>
-    </div>
-
     <marin-os-banner></marin-os-banner>
 
     <marin-app-header
@@ -45,17 +35,17 @@
       <section id="start" data-tab-section="start" aria-labelledby="start-heading">
         <div class="anonymizer-grid">
           <div class="app-card">
-            <div id="dropzone" class="anonymizer-dropzone" data-active="false">
+            <div id="dropzone" class="anonymizer-dropzone">
               <span class="anonymizer-dropzone__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
               </span>
-              <h2 id="start-heading">Drop a data file anywhere on this page</h2>
-              <p class="app-help-text">You can also choose one CSV, JSON, or XLSX file using the button below. The file remains on your device.</p>
+              <h2 id="start-heading">Upload</h2>
+              <p class="app-help-text">Drag and drop a <code>.csv</code>/<code>.json</code>/<code>.xlsx</code> file anywhere on this page, or use the browse button. Your file stays in this browser.</p>
               <div class="anonymizer-drop-actions">
-                <button type="button" id="choose-file-button" class="action-button" data-icon="upload">Choose file</button>
+                <button type="button" id="choose-file-button" class="action-button" data-icon="upload">Browse files</button>
                 <button type="button" id="clear-file-button" class="action-button" data-icon="x" aria-label="Clear file" title="Clear file" disabled></button>
               </div>
-              <input id="file-input" class="visually-hidden" type="file" tabindex="-1" aria-label="Choose a CSV, JSON, or XLSX file" accept=".csv,.json,.xlsx,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+              <input id="file-input" class="visually-hidden" type="file" tabindex="-1" aria-label="Upload a CSV, JSON, or XLSX file" accept=".csv,.json,.xlsx,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
             </div>
 
             <div id="file-summary" class="anonymizer-file-summary" hidden>
