@@ -15,10 +15,11 @@ import os
 from contextlib import contextmanager, nullcontext
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-import re
 import shutil
 from threading import Thread
 from urllib.parse import urlsplit
+
+from html_fixture import remove_from_html
 
 ROOT = Path(__file__).resolve().parents[1]
 CSV_FIXTURE = ROOT / "tests/fixtures/synthetic-records.csv"
@@ -140,8 +141,7 @@ def make_page(context, base_url: str | None):
         # No browser navigation is possible in some locked-down runners. Inject
         # the actual checked-in HTML, styles, libraries, and app JS into a page.
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        html = re.sub(r"<script\b[^>]*>.*?</script>", "", html, flags=re.S | re.I)
-        html = re.sub(r'<link\b[^>]*rel="stylesheet"[^>]*>', "", html, flags=re.I)
+        html = remove_from_html(html, "scripts", "stylesheets")
         page.set_content(html)
         for css in ("vendor/marinos/marinos.css", "assets/app.css"):
             page.add_style_tag(content=(ROOT / css).read_text(encoding="utf-8"))
